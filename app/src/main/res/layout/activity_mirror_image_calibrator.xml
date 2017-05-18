@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:opencv="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:weightSum="1.0"
+    tools:context="com.example.lkduy.remotehelper.MirrorImageCalibrator"
+    android:background="#ff000000">
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1.0">
+        <org.opencv.android.JavaCameraView android:id="@+id/calibAct_openCVCamView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            opencv:camera_id="1"/>
+
+        <Button android:id="@+id/calibAct_btnCalibScreen"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Calib Screen"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentRight="true"/>
+        <Button android:id="@+id/calibAct_btnCalibSkin"
+            android:text="Calib Skin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_alignParentBottom="true"/>
+        <Button android:id="@+id/calibAct_btnBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Back"
+            android:textSize="20dp"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentLeft="true"/>
+        <ImageView android:id="@+id/calibAct_imvCalibSquare"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#ff000055"
+            android:layout_centerVertical="true"/>
+        <ImageView android:id="@+id/calibAct_imvOriginFrame"
+            android:layout_width="300px"
+            android:layout_height="300px"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentTop="true"
+            android:visibility="invisible"/>
+        <ImageView android:id="@+id/calibAct_imv_processed"
+            android:layout_width="300px"
+            android:layout_height="300px"
+            android:visibility="visible"
+            android:layout_marginLeft="500px"
+            android:layout_marginTop="500px"/>
+        <TextView android:id="@+id/calibAct_tvCalibStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="700px"
+            android:textColor="#ffff00"
+            android:text=""
+            android:textSize="20dp"/>
+    </RelativeLayout>
+</LinearLayout>
