@@ -11,6 +11,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.ImageView;
@@ -24,6 +25,7 @@ import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfDouble;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
@@ -48,6 +50,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     SkinCalibrator skinCalibrator;
     DeviceScreenFinder screenFinder;
+
+    boolean isSendingHand = false;
+    boolean isShowingResultWindow = true;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,9 +85,32 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle item selection
-        if(item.getItemId() == R.id.menuItem_omniCalib){
-            Intent intent = new Intent(mainContext,MirrorImageCalibrator.class);
-            startActivity(intent);
+        switch (item.getItemId()){
+            case R.id.menuItem_omniCalib:
+                Intent intent = new Intent(mainContext,MirrorImageCalibrator.class);
+                startActivity(intent);
+                break;
+            case R.id.menuItem_sendHand:
+                isSendingHand = !isSendingHand;
+                if(isSendingHand == false){
+                    item.setTitle("Turn on sending hand");
+                }
+                else
+                {
+                    item.setTitle("Turn off sending hand");
+                }
+                break;
+            case R.id.main_menuItem_showResultWindow:
+                isShowingResultWindow = !isShowingResultWindow;
+                if(isShowingResultWindow){
+                    imvProcessed.setVisibility(View.VISIBLE);
+                    item.setTitle("Turn off show result");
+                }
+                else {
+                    imvProcessed.setVisibility(View.INVISIBLE);
+                    item.setTitle("Turn on show result");
+                }
+                break;
         }
         return true;
     }
@@ -225,9 +253,25 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     BitmapOrientationAdjuster adjuster = new BitmapOrientationAdjuster();
     Mat diffImg;
     List<Mat> channels = new ArrayList<Mat>();
+    HandSegmenter handSegmenter = new HandSegmenter();
+    Mat blankHand = null;
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         origin = inputFrame.rgba();
+        if(isSendingHand == false){
+            //send a blank picture
+            if(blankHand == null) {
+                blankHand = new Mat(mainContainer.getHeight() / 8, mainContainer.getWidth() / 8, CvType.CV_8UC4);
+                blankHand.setTo(new Scalar(0,0,0,0));
+            }
+            Bitmap bmpProcessed = Utilities.getBitmapOfMat(blankHand, true);
+            Object[] messageParams = new Object[2];
+            messageParams[0] = 9003;
+            messageParams[1] = Base64.encodeToString(Utilities.getBytesFromBitmap(bmpProcessed,true),Base64.DEFAULT);
+            AsyncDataSendingTask sendingTask = new AsyncDataSendingTask(networkCom.getSocket());
+            sendingTask.execute(messageParams);
+            return  origin;
+        }
         cloneOrigin = origin.clone();
         roi.x = origin.width()/2;
         roi.y = 0;
@@ -237,11 +281,14 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         screenArea = screenFinder.extractScreenAreaFromImage(croppedOrigin,mainContainer.getHeight()/8,mainContainer.getWidth()/8);
         cloneScreenArea = screenArea.clone();
         final Bitmap cacheScreenBmp = Utilities.getScreenshot(mainContainer);
-        final Bitmap flippedCacheScreenBmp = adjuster.RotateAndFlip(cacheScreenBmp);
+        final Bitmap adjustedCacheScreenBmp = adjuster.RotateAndFlip(cacheScreenBmp);
         if(cacheScreenImg == null){
-            cacheScreenImg = new Mat(flippedCacheScreenBmp.getHeight(),flippedCacheScreenBmp.getWidth(), CvType.CV_8UC4);
+            cacheScreenImg = new Mat(adjustedCacheScreenBmp.getHeight(),adjustedCacheScreenBmp.getWidth(), CvType.CV_8UC4);
         }
-        Utils.bitmapToMat(flippedCacheScreenBmp,cacheScreenImg);
+        Utils.bitmapToMat(adjustedCacheScreenBmp,cacheScreenImg);
+        Mat cloneCacheScreen = new Mat(cacheScreenImg.rows(), cacheScreenImg.cols(),CvType.CV_8UC4);
+        cloneCacheScreen.setTo(new Scalar(0,0,0,255));
+        cacheScreenImg.copyTo(cloneCacheScreen);
         Imgproc.cvtColor(cacheScreenImg,cacheScreenImg,Imgproc.COLOR_RGB2YCrCb);
         Imgproc.cvtColor(screenArea,screenArea, Imgproc.COLOR_RGB2YCrCb);
         if(diffImg == null) {
@@ -250,28 +297,32 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         Core.subtract(cacheScreenImg,screenArea,diffImg);
         Core.split(diffImg,channels);
         if(backgroundRemoval == null){
-            backgroundRemoval = new Mat(screenArea.rows(),screenArea.cols(),CvType.CV_8UC4);
+            backgroundRemoval = new Mat(screenArea.rows(),screenArea.cols(),CvType.CV_8UC1);
         }
         if(maskedScreenArea == null){
             maskedScreenArea = new Mat(screenArea.rows(), screenArea.cols(), screenArea.type());
         }
         backgroundRemoval.setTo(new Scalar(0,0,0,255));
         channels.get(2).copyTo(backgroundRemoval);
-        //Core.add(channels.get(1), channels.get(2), backgroundRemoval);
-        //Imgproc.GaussianBlur(backgroundRemoval,backgroundRemoval, new Size(19,19),2);
-        Imgproc.threshold(backgroundRemoval, backgroundRemoval,15,255,Imgproc.THRESH_BINARY);
-        final Mat cloneBackgroundRemoval = backgroundRemoval.clone();
-        Imgproc.dilate(backgroundRemoval,backgroundRemoval,Imgproc.getStructuringElement(Imgproc.MORPH_CROSS, new Size(15, 15)));
-        maskedScreenArea.setTo(new Scalar(0,0,0,0));
+        Imgproc.threshold(backgroundRemoval, backgroundRemoval,1, 255,Imgproc.THRESH_BINARY);
+        Imgproc.GaussianBlur(backgroundRemoval,backgroundRemoval, new Size(5,5),2);
+        Imgproc.erode(backgroundRemoval,backgroundRemoval,Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(9, 9)));
+        Imgproc.dilate(backgroundRemoval, backgroundRemoval,Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(51, 11)));
+        Imgproc.GaussianBlur(backgroundRemoval,backgroundRemoval, new Size(15,5),2);
+        Imgproc.threshold(backgroundRemoval, backgroundRemoval,1, 255,Imgproc.THRESH_BINARY);
+        maskedScreenArea.setTo(new Scalar(0,0,0));
         cloneScreenArea.copyTo(maskedScreenArea,backgroundRemoval);
-        skinMask = skinCalibrator.detectSkin(cloneScreenArea);
-        Core.add(skinMask,cloneBackgroundRemoval,skinMask);
-
+        skinMask = skinCalibrator.detectSkin(maskedScreenArea);
         if(outcome == null){
             outcome = new Mat(screenArea.rows(),screenArea.cols(),CvType.CV_8UC4);
         }
+
+        //Core.addWeighted(backgroundRemoval,0.5,skinMask,0.5,0,skinMask);
         outcome.setTo(new Scalar(0,0,0,0));
-        cloneScreenArea.copyTo(outcome,cloneBackgroundRemoval);
+        cloneScreenArea.copyTo(outcome,skinMask);
+        Imgproc.GaussianBlur(outcome,outcome,new Size(5,5),2);
+        skinMask.release();
+        cloneScreenArea.release();
         final Bitmap bmpProcessed = Utilities.getBitmapOfMat(outcome, true);
         runOnUiThread(new Runnable() {
             @Override

@@ -1,0 +1,4 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/calib_menu_showResultWindow"
+        android:title="Turn off result window"/>
+</menu>

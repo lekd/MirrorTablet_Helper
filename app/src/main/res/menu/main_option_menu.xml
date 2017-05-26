@@ -2,4 +2,9 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@+id/menuItem_omniCalib"
         android:title="Calibrate"/>
+    <item android:id="@+id/menuItem_sendHand"
+        android:title="Turn on sending hand"/>
+    <item android:id="@+id/main_menuItem_showResultWindow"
+        android:title="Turn off show result"
+        />
 </menu>

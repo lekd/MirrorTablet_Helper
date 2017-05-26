@@ -137,22 +137,28 @@ public class SkinCalibrator {
         yCrCb.setTo(new Scalar(0,0,0,255));
         Imgproc.cvtColor(img,yCrCb, Imgproc.COLOR_RGB2YCrCb);
         //Core.inRange(yCrCb, new Scalar(20,85,135), new Scalar(255,135,180),thresholded);
-        if(skinValBoundaries == null) {
+        /*if(skinValBoundaries == null) {
             skinValBoundaries = getSkinBoundaryVals();
-        }
+        }*/
+        //skinValBoundaries = getSkinBoundaryVals();
+        skinValBoundaries = getDefaultSkinVals();
         if(thresholded == null) {
             thresholded = new Mat(img.height(), img.width(), CvType.CV_8UC1);
         }
         thresholded.setTo(new Scalar(0,0,0,255));
         Core.inRange(yCrCb, skinValBoundaries[0], skinValBoundaries[1],thresholded);
         Imgproc.erode(thresholded, thresholded,Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(9, 9)));
-        Imgproc.dilate(thresholded, thresholded,Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(9, 9)));
+        Imgproc.dilate(thresholded, thresholded,Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(15, 4)));
+        Imgproc.erode(thresholded, thresholded,Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(9, 3)));
+        //Imgproc.GaussianBlur(thresholded,thresholded, new Size(15,5),2);
+        //Imgproc.erode(thresholded, thresholded,Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(9, 17)));
+        Imgproc.GaussianBlur(thresholded,thresholded, new Size(9,7),2);
         return thresholded;
     }
     Scalar[] getDefaultSkinVals(){
         Scalar[] skinBoundaries = new Scalar[2];
-        Scalar lowerSkinVal = new Scalar(20,95,65,255);
-        Scalar upperSkinVal = new Scalar(255,195,155,255);
+        Scalar lowerSkinVal = new Scalar(10,132,77,255);
+        Scalar upperSkinVal = new Scalar(255,172,127,255);
         skinBoundaries[0] = lowerSkinVal;
         skinBoundaries[1] = upperSkinVal;
         return skinBoundaries;
@@ -169,9 +175,11 @@ public class SkinCalibrator {
             float stdevCb = prefs.getFloat(paramSkinStdevCb, 0.0f);
             Scalar lowerSkinVal = new Scalar(0,0,0,255);
             Scalar upperSkinVal = new Scalar(0,0,0,255);
-            float ampVal = 2f;
+            float ampVal = 1.25f;
             lowerSkinVal.set(new double[]{meanY - ampVal*stdevY, meanCr - ampVal*stdevCr, meanCb - ampVal*stdevCb, 255});
+            lowerSkinVal.val[0] = 10;
             upperSkinVal.set(new double[]{meanY + ampVal*stdevY, meanCr + ampVal*stdevCr, meanCb + ampVal*stdevCb, 255});
+            upperSkinVal.val[0] = 255;
             skinBoundaries[0] = lowerSkinVal;
             skinBoundaries[1] = upperSkinVal;
         }

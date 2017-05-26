@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
+import android.graphics.PointF;
 import android.os.Looper;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -54,7 +55,7 @@ public class AnnotationView extends View {
     void initializePaint(){
         paint.setAntiAlias(true);
         paint.setStrokeWidth(10f);
-        paint.setColor(Color.RED);
+        paint.setColor(Color.CYAN);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeJoin(Paint.Join.ROUND);
     }
@@ -71,10 +72,10 @@ public class AnnotationView extends View {
             }
             int opacity = (int)((1.0 - (elapsedTime - 1000)*1.0/1000)*255);
             opacity = opacity>255 ? 255:opacity;
-            paint.setColor(Color.argb(opacity,255,0,0));
+            paint.setColor(Color.argb(opacity,0,255,255));
             canvas.drawPath(curPath.getPath(),paint);
         }
-        paint.setColor(Color.RED);
+        paint.setColor(Color.CYAN);
         if(onGoingPath != null) {
             canvas.drawPath(onGoingPath.getPath(), paint);
             for (int i = 0; i < unvalidPaths.size(); i++) {
@@ -105,12 +106,18 @@ public class AnnotationView extends View {
         }
         //invalidate();
         if(pointingEventHandler != null){
-            pointingEventHandler.HandlePointingEvent(onGoingPath.get_id(),eventX, eventY,event.getAction());
+            PointF relativePos = getRelativeLocation(eventX,eventY);
+            pointingEventHandler.HandlePointingEvent(onGoingPath.get_id(),relativePos.x, relativePos.y,event.getAction());
         }
         if(event.getAction() == MotionEvent.ACTION_UP){
             onGoingPath = null;
         }
         return true;
+    }
+    PointF getRelativeLocation(float X, float Y){
+        int viewW = this.getWidth();
+        int viewH = this.getHeight();
+        return  new PointF(X/viewW, Y/viewH);
     }
 }
 interface IPointingEventTriggered{

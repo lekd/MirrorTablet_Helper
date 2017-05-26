@@ -8,6 +8,9 @@ import android.graphics.Color;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -50,6 +53,8 @@ public class MirrorImageCalibrator extends AppCompatActivity implements CameraBr
     DeviceScreenFinder screenFinder ;
     SkinCalibrator skinCalibrator;
     CalibViewState viewState = CalibViewState.Normal;
+
+    boolean isShowingWindowResult = true;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -111,6 +116,31 @@ public class MirrorImageCalibrator extends AppCompatActivity implements CameraBr
         handleTouchOnCalibSquare();
         tvCalibStatus = (TextView)findViewById(R.id.calibAct_tvCalibStatus);
         tvCalibStatus.setTextColor(Color.rgb(255,255,0));
+    }
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.calib_option_menu, menu); //your file name
+        return super.onCreateOptionsMenu(menu);
+    }
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.calib_menu_showResultWindow:
+                isShowingWindowResult = !isShowingWindowResult;
+                if(isShowingWindowResult){
+                    item.setTitle("Turn off result window");
+                    imvProcessed.setVisibility(View.VISIBLE);
+                }
+                else {
+                    item.setTitle("Turn on result window");
+                    imvProcessed.setVisibility(View.INVISIBLE);
+                }
+                break;
+        }
+        return true;
     }
     void hideShowButton(final boolean isShown){
         runOnUiThread(new Runnable() {
